@@ -23,7 +23,7 @@ input=$1
 for GSM in `cat $input`
 do
 echo "Retriving $GSM from NCBI GEO";
-esearch -db sra -query $GSM | efetch -format docsum | xtract -pattern DocumentSummary -element Run@acc >> pappu;
-fastq-dump --outdir fastq --gzip --skip-technical  --origfmt --dumpcs --readids --read-filter pass --dumpbase --split-3 --clip SRR_ID
+SRR=`esearch -db sra -query $GSM | efetch -format docsum | xtract -pattern DocumentSummary -element Run@acc`;
+fastq-dump --outdir fastq --gzip --skip-technical --origfmt --readids --read-filter pass --dumpbase --split-3 --clip -A $SRR
 echo 'retrival_successful_FASTQ DUmped';
 done
