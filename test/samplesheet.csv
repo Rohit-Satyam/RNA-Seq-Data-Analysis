@@ -1,0 +1,7 @@
+Samplename,Filename,Sampletype,time
+Control1,Contr1_S15_L004.STAR.ReadCounts,control,168h
+Control2,Contr_S14_L004.STAR.ReadCounts,control,336h
+Control3,S1_S10_L004.STAR.ReadCounts,control,0h
+TRF2-shRNA1,S2_S11_L004.STAR.ReadCounts,test,0h
+TRF2-shRNA2,TRF22_S13_L004.STAR.ReadCounts,test,168h
+TRF2-shRNA3,TRF24_S12_L004.STAR.ReadCounts,test,336h
