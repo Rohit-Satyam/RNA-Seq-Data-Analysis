@@ -34,6 +34,7 @@ ggplot(raw_read_counts2)+ geom_histogram(aes(x = V2), stat = "bin", bins = 200) 
 
 
 ```
+![enter image description here](https://i.ibb.co/PtHZf9J/raw-count-plot.png)
 #### How do I know if my data should be modeled using the Poisson distribution or Negative Binomial distribution?
 
 If it’s count data, it should fit the negative binomial, as discussed previously. However, it can be helpful to plot the  _mean versus the variance_  of your data.  _Remember for the Poisson model, mean = variance, but for NB, mean < variance._
@@ -63,3 +64,4 @@ ggplot(df) +
     scale_y_log10() +
     scale_x_log10()
 ```
+![enter image description here](https://i.ibb.co/0CNCS8H/mean-Vs-variance.png)
