@@ -34,3 +34,32 @@ ggplot(raw_read_counts2)+ geom_histogram(aes(x = V2), stat = "bin", bins = 200) 
 
 
 ```
+#### How do I know if my data should be modeled using the Poisson distribution or Negative Binomial distribution?
+
+If it’s count data, it should fit the negative binomial, as discussed previously. However, it can be helpful to plot the  _mean versus the variance_  of your data.  _Remember for the Poisson model, mean = variance, but for NB, mean < variance._
+
+Run the following code to plot the  _mean versus variance_  for the control set of samples
+```R
+## To merge the readcounts files in form of a matrix
+DF = do.call(cbind,
+             lapply( list.files(pattern=".*.ReadCounts"),
+                     FUN=function(x) { 
+                         aColumn = read.table(x,header=F);
+                         colnames(aColumn)[2] = x;
+                         aColumn;
+                     }
+             )
+)
+#Removing repeated gene ID columns
+DF = DF[,!duplicated(colnames(DF))]
+
+##plot the _mean versus variance_ for the ‘Control and silenced’ replicates
+mean_counts <- apply(DF[, 2:4], 1, mean)
+variance_counts <- apply(DF[, 3:5], 1, var)
+df <- data.frame(mean_counts, variance_counts)
+ggplot(df) +
+    geom_point(aes(x=mean_counts, y=variance_counts)) + 
+    geom_line(aes(x=mean_counts, y=mean_counts, color="red")) +
+    scale_y_log10() +
+    scale_x_log10()
+```
