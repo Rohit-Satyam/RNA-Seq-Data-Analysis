@@ -65,3 +65,4 @@ ggplot(df) +
     scale_x_log10()
 ```
 ![enter image description here](https://i.ibb.co/0CNCS8H/mean-Vs-variance.png)
+Note that in the above figure, the variance across replicates tends to be greater than the mean (red line), especially for genes with large mean expression levels. _This is a good indication that our data do not fit the Poisson distribution and we need to account for this increase in variance using the Negative Binomial model (i.e. Poisson will underestimate variability leading to an increase in false positive DE genes)._
