@@ -5,7 +5,7 @@
 ## Alignments
 bsub -e rsem.e -o rsem.o -n 32 -q regularq rsem-calculate-expression --output-genome-bam --strandedness reverse -p 32 --calc-pme --calc-ci --keep-intermediate-files --append-names --sort-bam-by-coordinate --paired-end --estimate-rspd --star --star-path /home/parashar/anaconda3/bin/ /home/parashar/archive/ananda_rnaseq/trimmomatic/paired/Contr_S14_L004_R1_p.fastq /home/parashar/archive/ananda_rnaseq/trimmomatic/paired/Contr_S14_L004_R2_p.fastq /home/parashar/archive/rnaseq/rsem /home/parashar/scratch/last_rsem_test/Contr_S14_L004 2> /home/parashar/scratch/last_rsem_test/Contr_S14_L004.stderr
 
-Bulk RNA-Seq Analysis
+# Bulk RNA-Seq Analysis
 It's desirable to generate all the possible files you can if you have large computation power. Since running STAR in RSEM will require 32 GB RAM and 1 TB swappable disk memory, be wise to choose from the below mentioned output files. I personally prefer to generate all the possible output files at once
 
 To do alignment and calculate read abundance in terms of TPM used the following command 
