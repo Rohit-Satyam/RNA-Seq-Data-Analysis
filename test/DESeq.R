@@ -25,6 +25,8 @@ library(pvca)
 ## Reading samplesheet and saving it into sampleTable Object
 
 sampleTable<-read.csv("samplesheet.csv", header = TRUE, stringsAsFactors = FALSE, sep = ",")
+#head(sampleTable)    #Explore the first six observations
+#str()
 #saving row names of all samples
 rownames(sampleTable)<-sampleTable[,1]
 rownames(sampleTable)
