@@ -1,7 +1,7 @@
 # RNA-Seq-Data-Analysis
 
 ## RNA Seq Best Practices Highlights
-
+[Imgur](https://i.imgur.com/HZJyWvL.png)
 ![enter image description here](https://media.springernature.com/full/springer-static/image/art:10.1186/s13059-016-0881-8/MediaObjects/13059_2016_881_Fig1_HTML.gif?as=webp)
 
 ## Experimental design
