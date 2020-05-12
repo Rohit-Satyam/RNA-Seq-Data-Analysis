@@ -1,4 +1,5 @@
 # RNA-Seq-Data-Analysis
+Blogpost by Crazyhottomy on htseq: http://crazyhottommy.blogspot.com/2013/10/
 
 ## RNA Seq Best Practices Highlights
 ![enter image description here](https://i.imgur.com/HZJyWvL.png)
