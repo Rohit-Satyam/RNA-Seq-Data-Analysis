@@ -3,6 +3,7 @@
 
 The data we currently use in this tutorial can be found [here](https://github.com/Rohit-Satyam/RNA-Seq-Data-Analysis/tree/master/test)
 
+A wonderful RNASeq tutorial is [here](https://github.com/griffithlab/rnaseq_tutorial/wiki) 
 ## Feature Count using HTSeq
 
     while read p; 
