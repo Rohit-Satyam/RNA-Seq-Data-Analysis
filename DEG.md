@@ -3,6 +3,17 @@
 
 The data we currently use in this tutorial can be found [here](https://github.com/Rohit-Satyam/RNA-Seq-Data-Analysis/tree/master/test)
 
+## Feature Count using HTSeq
+
+    while read p; 
+    do 
+    name=$(basename ${p} .genome.sorted.bam); 
+    bsub -o ./readcounts/${name}_readcount.o -e ./readcounts/${name}_readcount.e -n 8 -q trisutra "htseq-count -f bam -r pos -a 10 -t exon -s reverse -i gene_name -m intersection-strict $p ~/archive/rnaseq/gencode.v33.annotation.gtf > ./readcounts/${p}_ReadCounts.csv 2>./readcounts/${p}.stderr"; 
+    done < list
+
+
+
+
 ## Differential gene expression analysis overview
 
 So what does this count data actually represent? The count data used for differential expression analysis represents the number of sequence reads that originated from a particular gene. The higher the number of counts, the more reads associated with that gene, and the assumption that there was a higher level of expression of that gene in the sample.
