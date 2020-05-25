@@ -116,6 +116,7 @@ df_boxplot <- data.frame(df_boxplot, Condition = substr(df_boxplot$variable, 1, 
 ggplot(df_boxplot, aes(x= variable, y = value, fill = Condition)) + geom_boxplot(alpha = 0.4) + scale_fill_manual(values = c("#619CFF", "#F564E3")) + theme_classic() + xlab("samples") + ylab("log2 converted raw counts")
 ```
 ![enter image description here](https://i.imgur.com/Cf3QDTc.png)
+
 Fig:Parallel boxplots from pseudocounts data.
 
 ### Histograms and density plots
@@ -126,4 +127,7 @@ more detail by enabling, for example, the detection of a secondary mode in the d
 ggplot(df_boxplot, aes(x = value, colour = variable, fill = variable)) + ylim(c(0, 0.25)) +  geom_density(alpha = 0.2, size = 1.25) + facet_wrap(~ Condition) +  theme(legend.position = "top") + xlab(expression(log[2](count + 1)))
 ```
 ![enter image description here](https://i.imgur.com/79fh5Fr.png)
+
+Fig: Densities plot displays smoothed empirical densities for the individual samples in each condition. There is evidence of bi-modality, these displays provide additional information what is not captured by boxplots.
+
 
