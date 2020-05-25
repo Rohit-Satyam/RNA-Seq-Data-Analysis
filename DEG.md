@@ -6,6 +6,8 @@
 3. A wonderful RNASeq tutorial is [here](https://github.com/griffithlab/rnaseq_tutorial/wiki) 
  
 4. RNASeq Nature Protocol [here](https://www.nature.com/articles/nprot.2013.099)
+
+5. [Statistical analysis of RNA-Seq data - Nathalie Vialaneix](http://www.nathalievialaneix.eu/doc/pdf/tutorial-rnaseq.pdf)
 ## Feature Count using HTSeq
 
     while read p; 
