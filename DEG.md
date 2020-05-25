@@ -130,4 +130,25 @@ ggplot(df_boxplot, aes(x = value, colour = variable, fill = variable)) + ylim(c(
 
 Fig: Densities plot displays smoothed empirical densities for the individual samples in each condition. There is evidence of bi-modality, these displays provide additional information what is not captured by boxplots.
 
+### MA-plot between samples
+An MA-plot is a plot of log-fold change (M-values, i.e. the log of the ratio of level counts for each gene between two samples) against the log-average (A-values, i.e. the average level counts for each gene across the two samples). 
+In simple words, **MA plot** is a scatter **plot** whose y-axis and x-axis respectively display **M**=log2(Ri/Gi) and A=log2(Ri*Gi) where Ri and Gi represent the intensity of the ith gene in R and G samples.
+
+The MA-plot is a useful to visualize reproducibility between samples of an experiment. From a MA-plot one can see if normalization is needed. In MA plot, genes with similar expression levels in two samples will appear around the horizontal line y = 0. A lowess fit (in red) is plotted underlying a possible trend in the bias related to the mean expression. Below we show the code to produce a simple MA-plot (e.g. between control 1 and control 2 samples).
+#### Boxplots
+Boxplot method provides an easy way to visualize the distribution of pseoudocounts in each sample. Below is the source code for the same.Note the dots depicts the outliers
+```R
+y = log2_rawcounts[, 2]
+x = log2_rawcounts[, 1]
+## M-values
+M = x - y
+A = (x + y)/2
+
+df_ma = data.frame(A, M)
+ggplot(df_ma, aes(x = A, y = M)) + geom_point(size = 1.5, alpha = 1/5) + geom_hline(yintercept= 0, color = "blue3") + stat_smooth(se = FALSE, method = "loess", color = "red3")
+
+```
+
+![enter image description here](https://i.imgur.com/giYj6P9.png)
+
 
