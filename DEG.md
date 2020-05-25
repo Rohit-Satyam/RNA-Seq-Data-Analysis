@@ -65,6 +65,9 @@ ggplot(raw_read_counts2)+ geom_histogram(aes(x = V2), stat = "bin", bins = 200) 
 ```
 ![enter image description here](https://i.imgur.com/VcNZtnq.png)
 
+Even more, common statistical methods for exploratory analysis of multidimensional data, especially methods for clustering and ordination (e. g., **principal-component analysis** ), work best for (at least approximately) **homoskedastic data**; this means that the variance of an observable quantity (i.e., here, **the expression strength of a gene**) does not depend on the mean (mean expression value). **In RNA-Seq data, however, variance grows with the mean, with larger variances for larger counts.** For example, if one performs PCA directly on a matrix of “normalized” read counts, the result typically depends only on the few most strongly expressed genes because they show the largest absolute differences between samples. A simple strategy to avoid this is to take the logarithm of the “normalized” count values plus a small constant; however, now the genes with low counts tend to dominate the results because, due to the strong “Poisson” noise inherent to small count values, they show the strongest relative differences between samples. 
+
+In order to make counts approximately homoskedastic, the packages DESeq, DESeq2 and edgeR offers functions to transform the data:
 
 #### How do I know if my data should be modeled using the Poisson distribution or Negative Binomial distribution?
 
