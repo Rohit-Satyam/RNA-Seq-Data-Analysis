@@ -99,4 +99,19 @@ ggplot(df) +
     scale_x_log10()
 ```
 ![enter image description here](https://i.ibb.co/0CNCS8H/mean-Vs-variance.png)
-Note that in the above figure, the variance across replicates tends to be greater than the mean (red line), especially for genes with large mean expression levels. _This is a good indication that our data do not fit the Poisson distribution and we need to account for this increase in variance using the Negative Binomial model (i.e. Poisson will underestimate variability leading to an increase in false positive DE genes)._
+Note that in the above figure, the variance across replicates tends to be greater than the mean (red line), especially for genes with large mean expression levels. _This is a good indication that our data do not fit the Poisson distribution and we need to account for this increase in variance using the Negative Binomial model (i.e. Poisson will underestimate variability leading to an increase in false positive DE genes).
+
+### Between-sample distribution
+It iss useful to contrast the distribution of gene-level expression values on different samples. It can for example be used to display the effects of between-samples before and after filtering and/or normalization.
+
+#### Boxplots
+Boxplot method provides an easy way to visualize the distribution of pseoudocounts in each sample. Below is the source code for the same.Note the dots depicts the outliers
+```R
+##To plot log2 normalized read counts for both control and test
+rawcounts <-counts(ddsHTSeq) ##store roaw counts from ddsHTseq
+rawcounts <- data.frame(rawcounts) ##saving it in a dataframe format
+log2_rawcounts<-data.frame(log2(rawcounts+1)) ## log2 normalization of raw reads
+df_boxplot <-melt(log2_rawcounts, variable.names("Samplename")) #variable.names:name of variable used to store values# melting function convert multivariate data into single column, Read here:http://www.datasciencemadesimple.com/melting-casting-r/
+df_boxplot <- data.frame(df_boxplot, Condition = substr(df_boxplot$variable, 1, 4)) ## Substring will add a new column and will write string of 1st four characters (cont $ test)
+ggplot(df_boxplot, aes(x= variable, y = value, fill = Condition)) + geom_boxplot(alpha = 0.4) + scale_fill_manual(values = c("#619CFF", "#F564E3")) + theme_classic() + xlab("samples") + ylab("log2 converted raw counts")
+```
