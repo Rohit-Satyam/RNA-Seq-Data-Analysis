@@ -58,11 +58,11 @@ ggplot(raw_read_counts2)+ geom_histogram(aes(x = V2), stat = "bin", bins = 200) 
 ```
 ![enter image description here](https://i.ibb.co/PtHZf9J/raw-count-plot.png)
 
-
+```R
     #Saving the pseudocounts in form of dataframe
     pseudoCount = data.frame(log2(raw_read_counts2$V2 + 1))
     ggplot(pseudoCount, aes(x = log2.raw_read_counts2.V2...1.)) + ylab(expression(log[2](count + 1))) + geom_histogram(colour = "white", fill = "#525252", binwidth = 0.6)+xlab("Control1")
-
+```
 ![enter image description here](https://i.imgur.com/VcNZtnq.png)
 
 
