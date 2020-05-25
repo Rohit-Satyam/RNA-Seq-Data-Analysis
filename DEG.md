@@ -115,3 +115,15 @@ df_boxplot <-melt(log2_rawcounts, variable.names("Samplename")) #variable.names:
 df_boxplot <- data.frame(df_boxplot, Condition = substr(df_boxplot$variable, 1, 4)) ## Substring will add a new column and will write string of 1st four characters (cont $ test)
 ggplot(df_boxplot, aes(x= variable, y = value, fill = Condition)) + geom_boxplot(alpha = 0.4) + scale_fill_manual(values = c("#619CFF", "#F564E3")) + theme_classic() + xlab("samples") + ylab("log2 converted raw counts")
 ```
+![enter image description here](https://i.imgur.com/Cf3QDTc.png)
+Fig:Parallel boxplots from pseudocounts data.
+
+### Histograms and density plots
+Pseudocounts distributions can also be summarized by means of a histogram or density plot. Histograms provide
+more detail by enabling, for example, the detection of a secondary mode in the distribution.
+
+```R
+ggplot(df_boxplot, aes(x = value, colour = variable, fill = variable)) + ylim(c(0, 0.25)) +  geom_density(alpha = 0.2, size = 1.25) + facet_wrap(~ Condition) +  theme(legend.position = "top") + xlab(expression(log[2](count + 1)))
+```
+![enter image description here](https://i.imgur.com/79fh5Fr.png)
+
