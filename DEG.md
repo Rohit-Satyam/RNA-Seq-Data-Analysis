@@ -16,7 +16,22 @@
     bsub -o ./readcounts/${name}_readcount.o -e ./readcounts/${name}_readcount.e -n 8 -q trisutra "htseq-count -f bam -r pos -a 10 -t exon -s reverse -i gene_name -m intersection-strict $p ~/archive/rnaseq/gencode.v33.annotation.gtf > ./readcounts/${p}_ReadCounts.csv 2>./readcounts/${p}.stderr"; 
     done < list
 
+Note: If you are using a count matrix and use tximport function of DESeq. Also to check if your metadata and count matrix headers follows same order perform the following check: 
 
+```R
+#using rownames and colnames function
+rownames(metadata)
+colnames(count_matrix)
+
+##an alternative approach is to use all function
+all(rownames(metadata) == colnames(count_matrix))
+
+[ 1 ] FALSE
+
+#To reorder the rows of metadata use MATCH function. Match function takes two vectors as input, First is the vector the oder of which we want to follow and the other vector is the one whose order has to be corrected ( here metadata). Therefore
+idx <- match(colnames(count_matrix), rownames(metadata))
+reorder_metadata <- metadata[idx,]
+```
 
 
 ## Differential gene expression analysis overview
@@ -152,5 +167,7 @@ ggplot(df_ma, aes(x = A, y = M)) + geom_point(size = 1.5, alpha = 1/5) + geom_hl
 ```
 
 ![enter image description here](https://i.imgur.com/giYj6P9.png)
+
+
 
 
