@@ -28,7 +28,15 @@ With differential expression analysis, we are looking for genes that change in e
 ![enter image description here](https://hbctraining.github.io/DGE_workshop/img/de_variation.png)
 The “uninteresting” presents as sources of variation in your data, and so even though the mean expression levels between sample groups may appear to be quite different, it is possible that the difference is not actually significant. **We need to take into account the variation in the data (and where it might be coming from) when determining whether genes are differentially expressed.**
 The goal of differential expression analysis is to determine, for each gene, whether the differences in expression (counts) **between groups** (control & case) is significant while also considering the amount of variation observed **within groups** (replicates). To test for significance, we need an appropriate statistical model that accurately performs normalization (to account for differences in sequencing depth, etc.) and variance modeling (to account for few numbers of replicates and large dynamic expression range).
-### RNA-seq count distribution
+
+##  Data exploration and quality assessment
+
+### Data Transformation
+For data exploration and visualisation, it is useful to work with transformed versions of the count data. As the count values distribution **is highly skewed**, the log2 transformation helps to approximately **normalize the distributions**. Log base 2 is typically used as it facilitates the conversion back to the original scale: a difference of 1 on the log base 2 scale corresponds to a fold change of 2 on the original count scale. Since count values for a gene can be zero in some conditions (and non-zero in others), we advocates the use of pseudocounts, i.e. transformations of the form
+
+`y = log2 (K + 1) or more generally, y = log2 (K + k0)`);
+
+where K represents the count values and k0 is a positive constant
 To determine the appropriate statistical model, we need information about the distribution of counts. To get an idea about how RNA-seq counts are distributed, let’s plot the counts for a single sample *Contr_S14_L004.STAR.ReadCounts:*
 ```R
 ##Reading the readcount file
@@ -49,6 +57,15 @@ ggplot(raw_read_counts2)+ geom_histogram(aes(x = V2), stat = "bin", bins = 200) 
 
 ```
 ![enter image description here](https://i.ibb.co/PtHZf9J/raw-count-plot.png)
+
+
+    #Saving the pseudocounts in form of dataframe
+    pseudoCount = data.frame(log2(raw_read_counts2$V2 + 1))
+    ggplot(pseudoCount, aes(x = log2.raw_read_counts2.V2...1.)) + ylab(expression(log[2](count + 1))) + geom_histogram(colour = "white", fill = "#525252", binwidth = 0.6)+xlab("Control1")
+
+![enter image description here](https://i.imgur.com/VcNZtnq.png)
+
+
 #### How do I know if my data should be modeled using the Poisson distribution or Negative Binomial distribution?
 
 If it’s count data, it should fit the negative binomial, as discussed previously. However, it can be helpful to plot the  _mean versus the variance_  of your data.  _Remember for the Poisson model, mean = variance, but for NB, mean < variance._
