@@ -345,9 +345,15 @@ Here we check the effect of the batch, wherein we group our samples into three g
 
 The figure above shows that "Batch" factor is responsible for nearly 55% of the variation observed in the experiment, followed by sampletype. The residual 12.7 % might be due to other contributing factors. Had the residual factor been the major contributor, we would have had investegated it using Surrogate Variable analysis. However, we did do it for out case. The code is provided below, to perform the same
 
+The PVCA analysis might be skewed as shown above since the dataset consists of an outlier. Therfore, we will repeat the above steps to remove the outlier sample and recheck the PVCA plot
 
+![enter image description here](https://i.imgur.com/xbSswHK.png)
 
+[enter image description here](https://i.imgur.com/YfWIqsK.png)
 
+![enter image description here](https://i.imgur.com/mwxhOPd.png)
+
+Clearly the batch effect that was seen lagely due to "Batch" factor came down. However, both batch and residual together contribute significantly to the variation in addition to the "sampletype". We can account for "Batch" factor but to account for residual factor we need to do some extra steps. We will perform Surrogate variable analysis:
 
 
 
