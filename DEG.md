@@ -239,7 +239,42 @@ ggplot(df_ma, aes(x = A, y = M)) + geom_point(size = 1.5, alpha = 1/5) + geom_hl
 
 **Step 2. Unsupervised clustering**
 These include PCA and Hierarchical clustering heatmaps. These are used to detect the outlier samples and other sources of biases.
-To explore how similar are the samples to each other w.r.t GE to assess Experiment quality
+To explore how similar are the samples to each other w.r.t GE to assess Experiment quality. 
+
+ - Log transform the normalised count to improve the visualization of clustering. DESEq2 uses a Variance Stabilising Transformation (VST). VST is a logarithmic transformation that moderates the variance across the mean. We can transform the  normalized count by using vst() function of DESeq2/ The blind-TRUE argument tells vst that the transformation should be blind to the sample information given in the design formula. This must be provided as TRUE when performing QC.
+ - In the heatmap more silimar samples must cluster together.
+ - Since most of the genes must not be differentially expressed, samples should have a high correlation with each others. Samples with correlation value of 0.8 must require further investigation to determine if they are outliers or possess contamination. 
+For clustering purposes, the most obvious choice of transformation is the logarithm. Since count values for a gene can be zero in some conditions (and non-zero in others), some advocate the use of pseudocounts, i.e. transformations of the form:
+> y=log2(n+n0) where n represents the count values and n0 is a positive constant
+
+Besides, regularized logarithm (rlog) can also be used for log based transformation. Both VST and rlog use the experiment-wide trend of variance over mean, in order to transform the data to remove the experiment-wide trend.
+VST (Variance Stabilising Transformation) looks at the trend between variance and mean in the data, and then tries to find a strictly monotonous transformation of the data so that this trend is removed. The VST is much faster to compute and is less sensitive to high count outliers than the rlog. The rlog tends to work well on small datasets (n < 30), potentially outperforming the VST when there is a wide range of sequencing depth across samples. For genes with high counts, both the VST and the rlog will give similar result to the ordinary log2 transformation of normalized counts. For genes with lower counts, however, the values are shrunken towards a middle value.
+```R
+vsd <- vst(ddsHTSeq, blind = FALSE)
+#view first three line in vsd assay (chage ,3 to 5 or more to view more lines). Clearly the VST estimates are nearly equal to log2 of rawcounts
+head(assay(vsd), 3)
+## To view size factor
+colData(vsd)
+
+##rlog 
+rld <- rlog(ddsHTSeq, blind = FALSE)
+head(assay(rld), 3)
+colData(rld)
+
+df <- bind_rows(
+  as_data_frame(log2(counts(ddsHTSeq, normalized=TRUE)[, 1:2]+1)) %>%
+    mutate(transformation = "log2(x + 1)"),
+  as_data_frame(assay(vsd)[, 1:2]) %>% mutate(transformation = "vst"),
+  as_data_frame(assay(rld)[, 1:2]) %>% mutate(transformation = "rlog"))
+colnames(df)[1:2] <- c("x", "y")
+
+##Shown are scatterplots using the log2 transform of normalized counts (left), using the VST (middle), and using the rlog (right). While the rlog is on roughly the same scale as the log2 counts, the VST has a upward shift for the smaller values. It is the differences between samples (deviation from y=x in these scatterplots) which will contribute to the distance calculations and the PCA plot.
+ggplot(df, aes(x = x, y = y)) + geom_hex(bins = 80) +
+  coord_fixed() + facet_grid( . ~ transformation)
+```
+![enter image description here](https://i.imgur.com/PYJ1OvL.png)
+
+
 
 
 
