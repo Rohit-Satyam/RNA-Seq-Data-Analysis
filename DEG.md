@@ -274,6 +274,11 @@ ggplot(df, aes(x = x, y = y)) + geom_hex(bins = 80) +
 ```
 ![enter image description here](https://i.imgur.com/PYJ1OvL.png)
 
+**Scatterplot of transformed counts from two control samples** Shown are scatterplots using the log2 transform of normalized counts (left), using the rlog (middle), and using the VST (right). While the rlog is on roughly the same scale as the log2 counts, the VST has a upward shift for the smaller values. The extreme left log2(x+1) represents lowly expressed genes and shows excessive variance. Such genes are of little use to us.
+
+PCA is a technique used to emphasize the variation present in the dataset. PCA finds the Principal components of a dataset with the first principle component, or PC1 , representing greatest amount of variance in the data.
+
+
 
 
 
