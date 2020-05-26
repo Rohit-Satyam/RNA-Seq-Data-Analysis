@@ -33,7 +33,29 @@ idx <- match(colnames(count_matrix), rownames(metadata))
 reorder_metadata <- metadata[idx,]
 ```
 
-
+```R
+## Loading the required libraries
+library("DESeq2")
+library("ggplot2")
+library("pheatmap")
+library("reshape2")
+library("ExpressionNormalizationWorkflow")
+library("sva")
+library("dplyr")
+library("hexbin")
+library("PoiClaClu")
+library("RColorBrewer")
+library("RUVSeq")
+library("ggbeeswarm")
+library("genefilter")
+library("AnnotationDbi")
+library("org.Hs.eg.db")
+library("ExpressionNormalizationWorkflow")
+library("Biobase")
+library("limma")
+library("pvca")
+library("ReportingTools")
+```
 ## Differential gene expression analysis overview
 
 So what does this count data actually represent? The count data used for differential expression analysis represents the number of sequence reads that originated from a particular gene. The higher the number of counts, the more reads associated with that gene, and the assumption that there was a higher level of expression of that gene in the sample.
@@ -118,6 +140,53 @@ ggplot(df) +
 ![enter image description here](https://i.ibb.co/0CNCS8H/mean-Vs-variance.png)
 Note that in the above figure, the variance across replicates tends to be greater than the mean (red line), especially for genes with large mean expression levels. _This is a good indication that our data do not fit the Poisson distribution and we need to account for this increase in variance using the Negative Binomial model (i.e. Poisson will underestimate variability leading to an increase in false positive DE genes).
 
+# Starting with DESeq2 workflow
+
+**Step 1. Normalization**
+Before we begin normalization, let's load metadata and tidyup some data. I have HTSeq counts files and a metadata (,csv) file containing the samplename (control1,test1,control2,test2...), file names, Sampletype (control,test), and Batch information (Rep 1 for he ones carried out at single timepoint (say 0th hour), Rep2 for one carried out at other time point (say, 24th hour)....etc).
+
+```R
+## Reading samplesheet and saving it into sampleTable Object
+sampleTable <- read.csv("samplesheet.csv",  header = T, stringsAsFactors = FALSE, sep = ",")
+rownames(sampleTable)<-sampleTable[,1]
+rownames(sampleTable)
+##Saving in deseq object
+ddsHTSeq<-DESeqDataSetFromHTSeqCount(sampleTable = sampleTable, directory = ".", design = ~ Sampletype)
+## Prefiltering: Here via filtering, we try to reduce the memory size of the dds data object, and we increase the speed of the transformation and testing functions within DESeq2. Here we perform a minimal pre-filtering to keep only rows that have at least 1 read.
+## This was done since I had six columns for each row. Setting it to > 1 will results in some samples with zero read counts.
+## more stringent # at least 3 samples with a count of 10 or higher
+
+keep <- rowSums(counts(ddsHTSeq)) > 10
+ddsHTSeq <- ddsHTSeq[keep,]
+
+tail(counts(ddsHTSeq))
+counts(ddsHTSeq)
+
+#exploring th object created
+ddsHTSeq
+## You can check number of rows by 
+nrow(ddsHTSeq)
+```
+To calculate the normalized counts with DESeq2, we use estimatesizefactors() function. By assigning the results back to the dds object we are filling in the slots of the DESeqDataSet object with the appropriate information. 
+
+```R
+ddsHTSeq <- estimateSizeFactors(ddsHTSeq)
+#We can take a look at the normalization factor applied to each sample using:
+sizeFactors(ddsHTSeq)
+#Now these size factors are used by DESeq to normalize Raw counts. 
+#The raw counts of each sample are divided by their respective size factor for normalization
+#Now, to retrieve the normalized counts matrix from dds, we use the counts() function and add the argument normalized=TRUE.
+normalized_counts <- counts(ddsHTSeq, normalized=TRUE)
+#We can save this normalized data matrix to file for later use:
+write.table(normalized_counts, file="normalized_counts.txt", sep="\t", quote=F, col.names=NA)
+```
+
+**NOTE:** DESeq2 doesn't actually use normalized counts, rather it uses the raw counts and models the normalization inside the Generalized Linear Model (GLM). DESEq2 uses a "median of ratios" method for normalization. This method adjusts the raw counts for library size and is resistant to large numbers of differentially expressed genes.
+
+These normalized counts will be useful for downstream visualization of results, but cannot be used as input to DESeq2 or any other tools that peform differential expression analysis which use the negative binomial model.
+
+Below mentioned are some QC strategies to understand and get a flovour of the kind of data you are deling with. We performed these steps before running the above mentioned code and can be skipped.
+
 ### Between-sample distribution
 It iss useful to contrast the distribution of gene-level expression values on different samples. It can for example be used to display the effects of between-samples before and after filtering and/or normalization.
 
@@ -167,6 +236,10 @@ ggplot(df_ma, aes(x = A, y = M)) + geom_point(size = 1.5, alpha = 1/5) + geom_hl
 ```
 
 ![enter image description here](https://i.imgur.com/giYj6P9.png)
+
+**Step 2. Unsupervised clustering**
+These include PCA and Hierarchical clustering heatmaps. These are used to detect the outlier samples and other sources of biases.
+To explore how similar are the samples to each other w.r.t GE to assess Experiment quality
 
 
 
