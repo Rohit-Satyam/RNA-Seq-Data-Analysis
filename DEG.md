@@ -8,6 +8,8 @@
 4. RNASeq Nature Protocol [here](https://www.nature.com/articles/nprot.2013.099)
 
 5. [Statistical analysis of RNA-Seq data - Nathalie Vialaneix](http://www.nathalievialaneix.eu/doc/pdf/tutorial-rnaseq.pdf)
+
+Special Thanks to Dr Iti Gupta from CSIR-IGIB for helping develop this workflow.
 ## Feature Count using HTSeq
 
     while read p; 
