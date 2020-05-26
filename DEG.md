@@ -274,9 +274,74 @@ ggplot(df, aes(x = x, y = y)) + geom_hex(bins = 80) +
 ```
 ![enter image description here](https://i.imgur.com/PYJ1OvL.png)
 
-**Scatterplot of transformed counts from two control samples** Shown are scatterplots using the log2 transform of normalized counts (left), using the rlog (middle), and using the VST (right). While the rlog is on roughly the same scale as the log2 counts, the VST has a upward shift for the smaller values. The extreme left log2(x+1) represents lowly expressed genes and shows excessive variance. Such genes are of little use to us.
+**Scatterplot of transformed counts from two control samples** Shown are scatterplots using the log2 transform of normalized counts (left), using the rlog (middle), and using the VST (right). While the rlog is on roughly the same scale as the log2 counts, the VST has a upward shift for the smaller values. The extreme left log2(x+1)graoh shows the L shaped cluster near the zero, which represents lowly expressed genes and shows excessive variance. Such genes are of little use to us.
 
-PCA is a technique used to emphasize the variation present in the dataset. PCA finds the Principal components of a dataset with the first principle component, or PC1 , representing greatest amount of variance in the data.
+PCA is a technique used to emphasize the variation present in the dataset. PCA finds the Principal components of a dataset with the first principle component, or PC1 , representing greatest amount of variance in the data. We usually need to perform these three steps to check the RNA-Seq data quality and remove samples that act as outliers.
+
+```R
+#Replicate correlation
+vsd_qc <- vst(ddsHTSeq, blind = TRUE)
+vsd_qc_mat <- assay(vsd_qc)
+vsd_qc_cor <- cor(vsd_qc_mat)
+library(grid, lib.loc = "C:/Program Files/R/R-3.6.2/library")
+png("VSD_QC_heatmap.png", width = 10, height = 9, units = 'in', res = 700)
+pheatmap(vsd_qc_cor)
+dev.off()
+
+##Another option for calculating sample distances is to use the Poisson Distance. The PoissonDistance function takes the original count matrix (not normalized) 
+poisd <- PoissonDistance(t(counts(ddsHTSeq)))
+samplePoisDistMatrix <- as.matrix( poisd$dd )
+rownames(samplePoisDistMatrix) <- colnames(assay(ddsHTSeq))
+colnames(samplePoisDistMatrix) <- colnames(assay(ddsHTSeq))
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+library(grid, lib.loc = "C:/Program Files/R/R-3.6.2/library")
+png("Heatmap_Using_Poisson Distance.png", width = 10, height = 9, units = 'in', res = 700)
+pheatmap(samplePoisDistMatrix, clustering_distance_rows = poisd$dd, clustering_distance_cols = poisd$dd, col = colors)
+dev.off()
+
+###PCA plot
+pcaData <- plotPCA(vsd_qc, intgroup = c( "Sampletype", "Batch"), returnData = TRUE)
+percentVar <- round(100 * attr(pcaData, "percentVar"))
+library(grid, lib.loc = "C:/Program Files/R/R-3.6.2/library")
+png("PCA.png", width = 10, height = 9, units = 'in', res = 700)
+ggplot(pcaData, aes(x = PC1, y = PC2, color = Batch, shape=Sampletype)) + geom_point(size =3) + xlab(paste0("PC1: ", percentVar[1], "% variance")) + ylab(paste0("PC2: ", percentVar[2], "% variance")) + coord_fixed() +ggtitle("PCA with VST data")
+dev.off()
+```
+
+The Following three essential steps gives us the following QC graphs:
+
+![enter image description here](https://i.imgur.com/EzVUNiB.png)
+
+Notice Control1 and Test1 cluster separately rather than in their control and sample groups
+
+![enter image description here](https://i.imgur.com/aLzIHdE.png)
+
+Similar trends are evident in the Heatmap of sample-to-sample distances using the Poisson Distance and PCA as well.
+![enter image description here](https://i.imgur.com/atlw2Jw.png)
+
+Therefore, before performing the DESeq analysis, we need to remove this outlier sample, reset the DESeq2 object. Also, this is the right time to see if there are other factors that can potentially influence your analysis. Here, in my case the replicates were obtained from same passage but at a week interval. This means passage number has changed at the ends of the weeks thereby accounting for the differences due to passage effect. We need to account for that effect if present. We use [Expression NormalizationWorkflows](https://www.bioconductor.org/packages/devel/workflows/vignettes/ExpressionNormalizationWorkflow/inst/doc/genExpNrm.html) here to check that.  
+```R
+##Checking the source of variation
+###SVA analysis using Expression Normalization workflow package
+normalized_counts<-counts(ddsHTSeq, normalized =  TRUE)
+log2_normalized_counts<-log2(normalized_counts+1)
+inpData <- expSetobj(log2_normalized_counts, sampleTable)
+## Set the covariates whose effect size on the data needs to be calculated
+cvrts_eff_var <- c("Sampletype", "Batch")
+## Set a PVCA Threshold Value between 0 & 1
+## PVCA Threshold Value is the percentile value of the minimum amount of the variabilities that the selected principal components need to explain, here requiring 75% of the expression variance to be captured by the PCs
+pct_thrsh <- 0.75 
+## Perform the PVCA analysis
+library(grid, lib.loc = "C:/Program Files/R/R-3.6.2/library")
+png("PVCA_Batch_eff.png", width = 10, height = 9, units = 'in', res = 700)
+pvcAnaly(inpData, pct_thrsh, cvrts_eff_var)
+dev.off()
+```
+Here we check the effect of the batch, wherein we group our samples into three groups Rep1, Rep2, Rep3. If the PVCA analysis explains the majority of variation using "Sampletype" and Batch contributing a few percentage, then we will ignore Batch as a factor influencing the DE of genes. 
+
+![enter image description here](https://i.imgur.com/L5aFwxH.png)
+
+The figure above shows that "Batch" factor is responsible for nearly 55% of the variation observed in the experiment, followed by sampletype. The residual 12.7 % might be due to other contributing factors. Had the residual factor been the major contributor, we would have had investegated it using Surrogate Variable analysis. However, we did do it for out case. The code is provided below, to perform the same
 
 
 
