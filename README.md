@@ -18,3 +18,13 @@ Blogpost by Crazyhottomy on htseq: http://crazyhottommy.blogspot.com/2013/10/
 
 
 ![enter image description here](https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Gene_structure_eukaryote_2_annotated.svg/800px-Gene_structure_eukaryote_2_annotated.svg.png)
+
+## RSeqQC Tutorial
+Create conda environment using python 2.7
+Install RSeqQC using `pip install RSeQC`
+Check installation success via typing `bam2fq.py --version`
+
+To use RseQC you need a GFF file in bed format
+Use the gtf2bed.pl script as follows: `./gtf2bed.pl file.gff > file_gff.bed`
+
+RNASeq Nature Protocol [here](https://www.nature.com/articles/nprot.2013.099)
