@@ -1,3 +1,5 @@
+If you are using STAR on a cluster and trying to split it on multiple nodes, that won't happen. See [here](https://github.com/alexdobin/STAR/issues/308)
+
 ## Using RSem
 
     rsem-prepare-reference --gtf /path to/gencode.v33.annotation.gtf --star --star-path ~/anaconda3/bin/ /path to/GRCh38.primary_assembly.genome.fa /home/parashar/scratch/name_of_output_file 2> rsem.stderr
