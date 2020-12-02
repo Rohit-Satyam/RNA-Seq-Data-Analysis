@@ -163,7 +163,7 @@ ggplot(pcaData, aes(x = PC1, y = PC2, color = time, shape=Sampletype)) +
   xlab(paste0("PC1: ", percentVar[1], "% variance")) +
   ylab(paste0("PC2: ", percentVar[2], "% variance")) +
   coord_fixed() +
-  ggtitle("PCA with VST data")
+  ggtitle("PCA with VST data") +theme_bw()+theme(axis.text.x = element_text(face="bold", color="black", size=12),axis.text.y = element_text(face="bold", color="black", size=12))+theme(axis.title.x = element_text(face="bold", colour = "black", size=12), axis.title.y = element_text(face="bold", colour = "black", size=12))
 
 ##Another plot, very similar to the PCA plot, can be made using the multidimensional scaling (MDS) function in base R. This is useful when we don't have a matrix of data, but only a matrix of distances.
 mds <- as.data.frame(colData(vsd))  %>% cbind(cmdscale(sampleDistMatrix))
