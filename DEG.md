@@ -9,6 +9,10 @@
 
 5. [Statistical analysis of RNA-Seq data - Nathalie Vialaneix](http://www.nathalievialaneix.eu/doc/pdf/tutorial-rnaseq.pdf)
 
+6. [Read trimming is not required for mapping and quantification of RNA-seq reads at the gene level](https://academic.oup.com/nargab/article/2/3/lqaa068/5901066)
+
+7. [Impact of RNA-seq data analysis algorithms on gene expression estimation and downstream prediction](https://www.nature.com/articles/s41598-020-74567-y) 
+
 Special Thanks to Dr Iti Gupta from CSIR-IGIB for helping develop this workflow.
 ## Feature Count using HTSeq
 
