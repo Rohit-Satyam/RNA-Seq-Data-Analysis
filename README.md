@@ -1,6 +1,14 @@
 # RNA-Seq-Data-Analysis
 Blogpost by Crazyhottomy on htseq: http://crazyhottommy.blogspot.com/2013/10/
 
+> I now use the following commands to get SRR IDs
+
+```
+pysradb gse-to-srp GSE149118
+pysradb srp-to-srr SRP257905 > samples.txt
+awk -F'\t' '{print $2}' samples.txt | tail +2 | parallel -j 3 "fasterq-dump  --outdir . -e 10 --skip-technical --split-3 {}"
+```
+
 ## RNA Seq Best Practices Highlights
 ![enter image description here](https://i.imgur.com/HZJyWvL.png)
 ![enter image description here](https://media.springernature.com/full/springer-static/image/art:10.1186/s13059-016-0881-8/MediaObjects/13059_2016_881_Fig1_HTML.gif?as=webp)
