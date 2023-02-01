@@ -1,0 +1,227 @@
+---
+title: "DE-Analysis KPE (F3199; F3682) vs KPE+Deltarasin "
+author: "Rohit Satyam"
+date: "`r Sys.Date()`"
+output: 
+    BiocStyle::html_document:
+      toc_float: true
+      code_folding: hide
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load Libraries
+```{r, message=FALSE, warning=FALSE}
+library(DESeq2)
+library(ggplot2)
+library("BiocParallel")
+library(org.Mm.eg.db)
+library(dplyr)
+library(tibble)
+library(EnhancedVolcano)
+library(pheatmap)
+library(ComplexHeatmap)
+library(tidyverse)
+library("vsn")
+library(ggrepel)
+library(plotly)
+library("PoiClaClu")
+library(schoolmath)
+```
+
+## Making DDS object
+
+```{r}
+path <- "/home/subudhak/Documents/sabir/DE_additional_analysis"
+sampleTable <- read.csv("/home/subudhak/Documents/sabir/DE_additional_analysis/samplesheet.csv",  header = T, stringsAsFactors = FALSE, sep = ",")
+head(sampleTable,4)
+sampleTable$original <- sampleTable[,1]
+rownames(sampleTable)<-sampleTable[,1]
+sampleTable$Year <- as.factor(sampleTable$Year)
+```
+
+Subset the sample table for KPE4KO.vs.KPE analysis
+```{r}
+## Since the DESeqDataSetFromHTSeqCount function uses second column to look for File names
+
+sampleTable <- sampleTable[-c(1:4),]
+ddsHTSeq_combined <- DESeqDataSetFromHTSeqCount(sampleTable = sampleTable, directory = path, design = ~ Mice+type)
+
+## Filtering the genes to increase computation speed
+dim(ddsHTSeq_combined) #55414     8
+keep <- rowSums(counts(ddsHTSeq_combined)) > 10
+dds.filtered <- ddsHTSeq_combined[keep,]
+dim(dds.filtered) #18296     8
+```
+
+In 4th plot we see segregation of samples based on Mice used on PC1. We observe this in correlation plots as well. Thus we will edit our design formula above and include this factor to account for this variability and rerun steps.  The Mice covariate into the design is “controlling for” the mice covariate (uninteresting factor) when estimating LFC for others factors such as effect of deltarasin.
+```{r}
+dds <- estimateSizeFactors(dds.filtered)
+vsd = vst(object = dds, blind = TRUE,# do not take the design formula into account; best practice for sample-level QC
+                                        fitType = "parametric")
+vsd$original <- rownames(vsd@colData)
+a <- plotPCA(vsd, intgroup = c( "type")) # Control samples cluster with Deltastrain
+## Checking for other sources of variability
+b <- plotPCA(vsd, intgroup = c( "CellLine")) # Sample segregate by Cell line type
+c <- plotPCA(vsd, intgroup = c( "Year"))
+d <- plotPCA(vsd, intgroup = c( "Mice")) 
+e <- plotPCA(vsd, intgroup = c( "Mice","Year"))
+f <- plotPCA(vsd, intgroup = c( "technical.rep"))
+library(ggpubr)
+ggarrange(a,b,c,d,e,f, nrow = 3, ncol = 2)
+
+t <- cor(assay(vsd))
+rownames(t) <- paste(colData(vsd)$category,rownames(t), sep = " : ")
+
+pheatmap(t)
+Heatmap(t)
+vsd.unblind <- vst(dds, blind = FALSE)
+t <- cor(assay(vsd.unblind))
+rownames(t) <- paste(colData(vsd.unblind)$category,rownames(t), sep = " : ")
+
+pheatmap(t)
+Heatmap(t)
+
+
+```
+
+# DE analysis
+
+Collapsing Technical Replicates. Now we have two biological replicates per condition.
+```{r}
+## Collapsing Technical replicates (TR). If u don't have TR skip it.
+ddsColl <- collapseReplicates(ddsHTSeq_combined, groupby = ddsHTSeq_combined$technical.rep)
+ddsColl@design
+## Filtering the genes to increase computation speed
+dim(ddsColl) #55414     6
+keep <- rowSums(counts(ddsColl)) > 10
+ddsColl <- ddsColl[keep,]
+dim(ddsColl) #18296     4
+
+vsd <- vst(ddsColl, blind = TRUE)
+## observing the levels
+ddsColl$category
+plotPCA(vsd, intgroup = c( "type"))
+pcaData <- plotPCA(vsd, intgroup = c( "type"), returnData = TRUE)
+
+## custom function to make pcaplot
+pcaData
+percentVar <- round(100 * attr(pcaData, "percentVar"))
+t <- ggplot(pcaData, aes(x = PC1, y = PC2, color = group , label=name)) +
+    geom_point(size =3) +
+    xlab(paste0("PC1: ", percentVar[1], "% variance")) +
+    ylab(paste0("PC2: ", percentVar[2], "% variance")) +
+    coord_fixed() +
+    ggtitle("PCA with VST data") +theme_bw()+theme(axis.text.x = element_text(face="bold", color="black", size=12),axis.text.y = element_text(face="bold", color="black", size=12))+theme(axis.title.x = element_text(face="bold", colour = "black", size=12), axis.title.y = element_text(face="bold", colour = "black", size=12))+theme(legend.text=element_text(size=12),legend.title=element_text(size=14))
+
+t+geom_text_repel()
+
+```
+
+Performing Differential Expression analysis
+```{r}
+dds <- DESeq2::DESeq(ddsColl)
+plotDispEsts(dds)
+#resultsNames(dds)
+saveRDS(dds,"kpe.vs.kpe.deltarasin.rds")
+```
+Saving DE list. We can retrieve EnsembleID to gene_ID mapping from gtf file using command given below. Below given is also a code in R to achieve the same.
+
+```
+cat gencode.vM28.primary_assembly.annotation.gtf | awk 'BEGIN{F
+S="\t"}{split($9,a,";"); if($3~"gene") print a[1]"\t"a[3]"\t"$1":"$4"-"$5"\t"a[2]"\t"$7}' |sed 's/gene_id "//' | sed 's/
+gene_id "//' | sed 's/gene_type "//'| sed 's/gene_name "//' | sed 's/"//g' | awk 'BEGIN{FS="\t"}{split($3,a,"[:-]"); pri
+nt $1"\t"$2"\t"a[1]"\t"a[2]"\t"a[3]"\t"$4"\t"$5"\t"a[3]-a[2];}' | sed "1i\Geneid\tGeneSymbol\tChromosome\tStart\tEnd\tCl
+ass\tStrand\tLength"  > gencode.vM28_gene_annotation_table.txt
+```
+
+```{r}
+
+mcols(dds, use.names = TRUE)
+
+## adding geneids simultaneously
+geneids <- read.csv("gencode.vM28_gene_annotation_table.txt",sep = "\t", header = T)
+
+## function to add gene symbols to result
+addGeneSymbols <- function(x,source=geneids){data.frame(x) %>% tibble::rownames_to_column("Geneid") %>% S4Vectors::merge(.,source,by.x='Geneid',by.y='Geneid', all.x=T, sort=F)}
+
+resultsNames(dds)
+resShrink <- lfcShrink(dds, coef = 3) #type_Deltastrain_vs_Control
+temp <- addGeneSymbols(resShrink)
+write.csv(temp, "kpe.vs.kpe.deltarasin_DEGs.csv")
+
+summary(results(dds))
+
+```
+
+
+We then use this file to assign gene names to the Ensemble IDs in our data.
+
+```{r}
+
+# ## converting ensembl IDs to gene symbols using gtf file
+# 
+# gtf.gr = rtracklayer::import("./gencode.vM28.primary_assembly.annotation.gtf")
+# 
+# gtf.df = as.data.frame(gtf.gr)
+# genes = unique(gtf.df[ ,c("gene_id","gene_name")])
+# library(data.table)
+# fwrite(genes, file="gene_ID.gene_name.txt", sep="\t")
+
+
+
+plotVolcano <- function(x,title=NULL,lab="GeneSymbol",LFC=1,padj=1e-06){
+EnhancedVolcano(x, lab = x[,lab] ,
+                x = 'log2FoldChange',
+                y = 'padj',FCcutoff = LFC,pCutoff = padj,
+                title = title, subtitle = expression(italic("(Log"[2] ~ "FC cutoff = 1 and p-value cutoff = 1e-06)")),legendPosition = 'right',legendLabSize = 13,
+    legendIconSize = 5.0,
+                legendLabels = c('Not significant', expression(Log[2] ~ 'FC (but do not pass p-value cutoff)'), 'Pass p-value cutoff',expression("Pass both p-value & Log"[2] ~ FC)), colConnectors = 'black',drawConnectors = TRUE,
+                widthConnectors = 1.0,boxedLabels = TRUE,pointSize = 3.0,
+                labSize = 6.0,    col = c('black', 'pink', 'purple', 'red3'),
+    colAlpha = 4/5) 
+}
+
+plotVolcano(temp,title = "KPE vs KPE+Deltarasin")
+
+```
+
+# Making Heatmaps for DEGs in each category
+
+Plotting top 10 up and down DE genes
+```{r}
+vsd.unblind <- vst(dds, blind = FALSE)
+
+plotTop10 <- function(x,vsdobj,sub){
+
+temp <- x %>% filter(padj < 0.05 & abs(log2FoldChange) >1)
+temp$status <- ifelse(is.positive(temp$log2FoldChange),"up","down")
+top10up = temp %>% filter(status=="up") %>% .[with(., order(padj, log2FoldChange)), ] %>% head(n=10)
+top10down = temp %>% filter(status=="down") %>% .[with(., order(padj, log2FoldChange)), ] %>% head(n=10)
+top20de = rbind(top10up,top10down)
+mat = assay(vsdobj[top20de$Geneid,sub])
+rownames(mat) <- top20de$GeneSymbol
+Heatmap(t(mat),
+        heatmap_legend_param = list(title="VST Normalised Counts"),
+        column_title = gt_render(deparse(substitute(x))),
+        width = nrow(mat)*unit(5, "mm"), 
+    height = ncol(mat)*unit(5, "mm")
+        )
+}
+
+KD.vs.Control <- temp
+## making heatmaps
+plotTop10(KD.vs.Control,vsdobj = vsd.unblind,sub = dds@colData %>% data.frame() %>% rownames())
+
+```
+
+
+# Session Information {-}
+
+```{r}
+sessionInfo()
+```
+

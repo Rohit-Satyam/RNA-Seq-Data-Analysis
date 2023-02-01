@@ -1,0 +1,160 @@
+---
+title: "Data Exploration"
+author: "Rohit Satyam"
+date: "`r Sys.Date()`"
+output: 
+    BiocStyle::html_document:
+      toc_float: true
+      code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data Preprocessing
+
+We will convert the `HTSeq` counts into `DESeqDataSet` object and collapse the technical replicates and carry out standard QC and Differential expression analysis.But before collapsing let's ensure if the replicates cluster together.
+
+# Step1: Loading the Data
+
+Loading the necessary Packages
+
+```{r, message=F,warning=F}
+library(DESeq2)
+library(ggplot2)
+library("BiocParallel")
+library(org.Mm.eg.db)
+library(dplyr)
+library(tibble)
+library(EnhancedVolcano)
+library(pheatmap)
+library(ComplexHeatmap)
+library(tidyverse)
+library("vsn")
+library(ggrepel)
+library(plotly)
+library("PoiClaClu")
+library(schoolmath)
+mm <- org.Mm.eg.db
+set.seed(1000)
+```
+
+## Making DDS object
+
+```{r}
+path <- "D:/E/sabir/DE_additional_analysis/"
+sampleTable <- read.csv("D:/E/sabir/DE_additional_analysis/samplesheet.csv",  header = T, stringsAsFactors = FALSE, sep = ",")
+head(sampleTable,4)
+sampleTable$original <- sampleTable[,1]
+rownames(sampleTable)<-sampleTable[,1]
+
+## Since the DESeqDataSetFromHTSeqCount function uses second column to look for File names
+ddsHTSeq_combined <- DESeqDataSetFromHTSeqCount(sampleTable = sampleTable, directory = path, design = ~ type)
+
+## Filtering the genes to increase computation speed
+dim(ddsHTSeq_combined) #55414     6
+keep <- rowSums(counts(ddsHTSeq_combined)) > 10
+dds.filtered <- ddsHTSeq_combined[keep,]
+dim(dds.filtered) #20140     6
+```
+
+
+```{r}
+dds <- estimateSizeFactors(dds.filtered)
+vsd = vst(object = dds, blind = FALSE,# do not take the design formula into account; best practice for sample-level QC
+                                        fitType = "parametric")
+```
+
+
+# Checking the quality of samples after VST or rlog normalisation
+
+PCA helps us capture within-group and between group variability and gauge how similar are our biological replicates.
+```{r}
+vsd$Year <- as.factor(vsd$Year)
+vsd$original <- rownames(vsd@colData)
+a <- plotPCA(vsd, intgroup = c( "type")) # Control samples cluster with Deltastrain
+## Checking for other sources of variability
+b <- plotPCA(vsd, intgroup = c( "CellLine")) # Sample segregate by Cell line type
+c <- plotPCA(vsd, intgroup = c( "Year"))
+d <- plotPCA(vsd, intgroup = c( "Mice")) 
+e <- plotPCA(vsd, intgroup = c( "Mice","Year"))
+f <- plotPCA(vsd, intgroup = c( "technical.rep"))
+library(ggpubr)
+ggarrange(a,b,c,d,e,f, nrow = 3, ncol = 2)
+pcaData <- plotPCA(vsd, intgroup = c( "category"), returnData = TRUE)
+
+## custom function to make pcaplot
+pcaData
+percentVar <- round(100 * attr(pcaData, "percentVar"))
+
+
+t <- ggplot(pcaData, aes(x = PC1, y = PC2, color = group , label=name)) +
+    geom_point(size =3) +
+    xlab(paste0("PC1: ", percentVar[1], "% variance")) +
+    ylab(paste0("PC2: ", percentVar[2], "% variance")) +
+    coord_fixed() +
+    ggtitle("PCA with VST data") +theme_bw()+theme(axis.text.x = element_text(face="bold", color="black", size=12),axis.text.y = element_text(face="bold", color="black", size=12))+theme(axis.title.x = element_text(face="bold", colour = "black", size=12), axis.title.y = element_text(face="bold", colour = "black", size=12))+theme(legend.text=element_text(size=12),legend.title=element_text(size=14))
+
+t+geom_text_repel()
+
+ggplotly(t)
+
+#making the graph interactive
+
+```
+Instead of PCA, you can also make make Multidimensional scaling (MDS)  plots. We are plotting principal coordinates analysis using `cmdscale function`
+
+```{r}
+## using eucledian distance
+mds <- as.data.frame(colData(vsd))  %>% cbind(cmdscale(dist(t(assay(vsd)))))
+mds.poca <- ggplot(mds, aes(x = `1`, y = `2`, color = category, label=original)) +
+    geom_point(size = 3) + coord_fixed() + ggtitle("MDS with VST data")
+
+ggplotly(mds.poca)
+
+## A better fitting distance for sequencing data called the Poisson Distance with a number of optimizations available in the PoiClaClu library. This library was specifically designed to handle read count data and is less influenced by read-count differences across samples.
+
+
+# Use the raw (not r-log or vst transformed!) counts
+mds <- as.data.frame(colData(dds)) %>%
+    cbind(cmdscale(as.matrix(PoissonDistance(t(counts(dds)))$dd)))
+mds.Pois <- ggplot(mds, aes(x = `1`, y = `2`, color = category, label=original)) + geom_point(size = 3) + coord_fixed() + ggtitle("MDS with PoissonDistances")+labs(x = "Poisson Distance", y = "Poisson Distance")
+
+ggplotly(mds.Pois)
+```
+
+# Making sample Sample Correlation plots (unsupervised clustering)
+
+We can use Pheatmap or ComplexHeatmap library to make correlation based heatmaps.
+
+In similar way as the code chunk given below, you can make distance based heatmaps.
+
+```{r}
+t <- cor(assay(vsd))
+rownames(t) <- paste(colData(vsd)$category,rownames(t), sep = " : ")
+
+pheatmap(t)
+Heatmap(t)
+vsd.unblind <- vst(dds, blind = FALSE)
+t <- cor(assay(vsd.unblind))
+rownames(t) <- paste(colData(vsd.unblind)$category,rownames(t), sep = " : ")
+
+pheatmap(t)
+Heatmap(t)
+
+```
+
+
+Clearly all the replicates clusters well and there are no outlier so no samples to remove. However, we do see Mice strain-wise clustering as all mice sample `3199` cluster together and so does `3682`. `Blind=TRUE` is a good way to check if after accounting for all the biasis, the samples still cluster together separately from the controls or not without prior information of category they belong to!! 
+
+
+# Session Information {-}
+
+```{r}
+sessionInfo()
+```
+
+
+
+

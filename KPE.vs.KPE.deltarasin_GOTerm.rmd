@@ -1,0 +1,269 @@
+---
+title: "GO Term Analysis Report (KPEDeltarasin.vs.KPE)"
+author: "Rohit Satyam"
+date: "`r Sys.Date()`"
+output: 
+    BiocStyle::html_document:
+      toc_float: true
+      code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(knitr.duplicate.label = "allow")
+```
+
+## Load Libraries
+
+```{r}
+library(org.Mm.eg.db)
+mm <- org.Mm.eg.db
+set.seed(1000)
+
+
+## Keep checking the clusterprofiler document because arguments keeps on changing
+library(clusterProfiler)
+library(enrichplot)
+library(ggpubr)
+library(wordcloud)
+library(ggplot2)
+library(schoolmath)
+library(dplyr)
+library(topGO)
+library(biomaRt)
+ensembl <- useEnsembl(biomart = "genes")
+searchDatasets(mart = ensembl, pattern = "mmusculus")
+db <- useDataset(dataset = "mmusculus_gene_ensembl", mart = ensembl)
+
+```
+
+## ORA analysis
+
+
+```{r}
+KD.vs.Control <- read.csv("kpe.vs.kpe.deltarasin_DEGs.csv")
+KD.vs.Control$status <- ifelse(is.positive(KD.vs.Control$log2FoldChange),"up","down")
+bg <- GeneStructureTools::removeVersion(KD.vs.Control$Geneid)
+filt.de <- subset(KD.vs.Control, abs(log2FoldChange) > 1 & padj < 0.05)
+
+# make named factor showing which genes are of interest
+selection <- function(x) TRUE
+
+
+```
+Writing functions to avoid code redundancy
+```{r}
+## Functions 
+makeGeneList <- function(degs,stat){
+d <- subset(degs, status==stat)
+geneList <- d$padj
+names(geneList) <- GeneStructureTools::removeVersion(d$Geneid)
+return(geneList)
+}
+
+## TopGO
+goTerm <- function(bg,geneList,selection,algo="weight01"){
+go_ids= getBM(attributes=c('go_id', 'ensembl_gene_id', 'namespace_1003'), filters='ensembl_gene_id', values=bg, mart=db)
+## remove genes without GO term
+go_ids <- go_ids[!go_ids$go_id=="",]
+gene_2_GO=unstack(go_ids[,c(1,2)])
+#selection <- function(allScore){ return(allScore < 0.05)}
+GOdata=new('topGOdata', ontology='BP', allGenes = geneList, annot = annFUN.gene2GO, gene2GO = gene_2_GO, geneSel=selection)
+results.ks <- runTest(GOdata, algorithm=algo, statistic="ks")
+goEnrichment <- GenTable(GOdata, KS=results.ks, orderBy="KS", topNodes=length(usedGO(GOdata)))
+goEnrichment$KS <- as.numeric(goEnrichment$KS)
+goEnrichment <- goEnrichment[goEnrichment$KS<0.05,]
+goEnrichment <- goEnrichment[,c("GO.ID","Term","KS")]
+goEnrichment$Term <- gsub(" [a-z]*\\.\\.\\.$", "", goEnrichment$Term)
+goEnrichment$Term <- gsub("\\.\\.\\.$", "", goEnrichment$Term)
+goEnrichment$Term <- paste(goEnrichment$GO.ID, goEnrichment$Term, sep=", ")
+goEnrichment$Term <- factor(goEnrichment$Term, levels=rev(goEnrichment$Term))
+## To also get Gene IDs
+get.genes <- plyr::ldply(genesInTerm(GOdata,goEnrichment$GO.ID), rbind)
+tidy.genes <- get.genes %>% tidyr::unite(col = "col", 2:ncol(get.genes), sep = ",", na.rm = T)
+goEnrichment$associated_genes <- tidy.genes$col
+return(goEnrichment)
+}
+
+
+#### Function to plot TopGO results
+dot <- function(res){
+  ggplot(res,
+  aes(x = Term, y = -log10(KS), size = -log10(KS), fill = -log10(KS))) +
+  expand_limits(y = 1) +
+  geom_point(shape = 21) +
+  scale_size(range = c(2.5,12.5)) +
+  scale_fill_continuous(low = 'royalblue', high = 'red4') +
+  xlab('') + ylab('Enrichment score') +
+  labs(
+    title = 'GO Biological processes',
+    subtitle = paste('Top',length(res$Term),'terms ordered by Kolmogorov-Smirnov p-value'),
+    caption = 'Cut-off lines drawn at equivalents of p=0.05, p=0.01, p=0.001') +
+  geom_hline(yintercept = c(-log10(0.05), -log10(0.01), -log10(0.001)),
+    linetype = c("dotted", "longdash", "solid"),
+    colour = c("black", "black", "black"),
+    size = c(0.5, 1.5, 3)) +
+  theme_bw(base_size = 24) +
+  theme(
+    legend.position = 'right',
+    legend.background = element_rect(),
+    plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
+    plot.subtitle = element_text(angle = 0, size = 14, face = 'bold', vjust = 1),
+    plot.caption = element_text(angle = 0, size = 12, face = 'bold', vjust = 1),
+    axis.text.x = element_text(angle = 0, size = 12, face = 'bold', hjust = 1.10),
+    axis.text.y = element_text(angle = 0, size = 12, face = 'bold', vjust = 0.5),
+    axis.title = element_text(size = 12, face = 'bold'),
+    axis.title.x = element_text(size = 12, face = 'bold'),
+    axis.title.y = element_text(size = 12, face = 'bold'),
+    axis.line = element_line(colour = 'black'),
+    #Legend
+    legend.key = element_blank(), # removes the border
+    legend.key.size = unit(1, "cm"), # Sets overall area/size of the legend
+    legend.text = element_text(size = 14, face = "bold"), # Text size
+    title = element_text(size = 14, face = "bold")) +
+  coord_flip()
+}
+```
+
+
+Reporting top 20 GO terms. We segregate up and Down regulated genes and perform GO Enrichment analysis separately.
+```{r}
+## Upregulated Genes
+upde <- makeGeneList(filt.de,"up")
+a <- goTerm(bg, upde, selection)
+dot(a[1:20,])
+
+## Upregulated Genes
+downde <- makeGeneList(filt.de,"down")
+b <- goTerm(bg, downde, selection)
+dot(b[1:20,])
+
+library(xlsx)
+write.xlsx(a, file="kpe.vs.kpeDeltarasin-goanalysis.xlsx", sheetName="Upreg-DEGs", row.names=FALSE)
+write.xlsx(b, file="kpe.vs.kpeDeltarasin-goanalysis.xlsx", sheetName="Downreg-DEGs", append=TRUE, row.names=FALSE)
+```
+
+
+## Pathway analysis 
+
+Preparing the genesets and necessary objects.
+
+For performing non-human active-subnetwork-oriented enrichment analysis, the user needs the following resources:
+
+- organism-specific protein interaction network (PIN) data
+- organism-specific gene sets data
+
+```{r}
+library(pathfindR)
+###############  Obtain Organism-specific Gene Sets #########################
+gsets_list <- get_gene_sets_list(source = "KEGG",
+                                 org_code = "mmu")
+## Save both as RDS files for later use
+ saveRDS(gsets_list, "gsets_list.RDS")
+```
+Here we will use gene Symbols (mgi gene symbols) since KEGG `gsets_list` contains gene symbols rather than ensembl IDs. Now preparing PIN data
+```{r}
+###############  Obtain protein interaction network (PIN) data #########################
+# From STRING
+url <- "https://stringdb-static.org/download/protein.links.v11.5/10090.protein.links.v11.5.txt.gz"
+path2file <- file.path(tempdir(check = TRUE), "STRING.txt.gz")
+download.file(url, path2file)
+mmu_string_df <- read.table(path2file, header = TRUE)
+## filter using combined_score cut-off value of 400 see: https://github.com/egeulgen/pathfindR/issues/137
+mmu_string_df <- mmu_string_df[mmu_string_df$combined_score >= 400, ]
+## fix ids
+mmu_string_pin <- data.frame(Interactor_A = sub("^10090\\.", "", mmu_string_df$protein1),Interactor_B = sub("^10090\\.", "", mmu_string_df$protein2))
+##
+library(biomaRt)
+#Since the input id is ensemble protein ID, we will convert them to gene ID
+converted <- getBM(attributes = c("ensembl_peptide_id", "mgi_symbol"),
+                   filters = "ensembl_peptide_id",
+                   values = unique(unlist(mmu_string_pin)),
+                   mart = db)
+mmu_string_pin$Interactor_A <- converted$mgi_symbol[match(mmu_string_pin$Interactor_A, converted$ensembl_peptide_id)]
+mmu_string_pin$Interactor_B <- converted$mgi_symbol[match(mmu_string_pin$Interactor_B, converted$ensembl_peptide_id)]
+mmu_string_pin <- mmu_string_pin[!is.na(mmu_string_pin$Interactor_A) & !is.na(mmu_string_pin$Interactor_B), ]
+mmu_string_pin <- mmu_string_pin[mmu_string_pin$Interactor_A != "" & mmu_string_pin$Interactor_B != "", ]
+mmu_string_pin$Interactor_A <- gsub("\\..*","", mmu_string_pin$Interactor_A)
+mmu_string_pin$Interactor_B <- gsub("\\..*","", mmu_string_pin$Interactor_B)
+###############################################
+# remove self interactions
+self_intr_cond <- mmu_string_pin$Interactor_A == mmu_string_pin$Interactor_B
+mmu_string_pin <- mmu_string_pin[!self_intr_cond, ]
+# remove duplicated inteactions (including symmetric ones)
+mmu_string_pin <- unique(t(apply(mmu_string_pin, 1, sort))) # this will return a matrix object
+mmu_string_pin <- data.frame(A = mmu_string_pin[, 1],
+                             pp = "pp",
+                             B = mmu_string_pin[, 2])
+path2SIF <- file.path("/home/subudhak/Documents/sabir/DE_additional_analysis", "mmusculusPIN.sif")
+write.table(mmu_string_pin,
+            file = path2SIF,
+            col.names = FALSE,
+            row.names = FALSE,
+            sep = "\t",
+            quote = FALSE)
+path2SIF <- normalizePath(path2SIF)
+```
+
+I wrote a function to subset those genes only expressed in the data
+
+```{r}
+retainExpressedOnly <- function(gsets,univ){
+  ## Tidy Up Gene Names
+  # gset.tidy <- lapply(1:length(gsets$gene_sets), function(x){
+  #   gsub("\\..*","", gsets$gene_sets[[x]])
+  # })
+  # univ.tidy <-gsub("\\..*","", univ)
+  ## Subsetting the gset based on background list provided
+  gset.subset <- lapply(1:length(gsets$gene_set),function(x){
+    gsets$gene_sets[[x]][gsets$gene_sets[[x]] %in% univ]
+  })
+  
+  names(gset.subset) <- names(gsets$gene_sets)
+  
+  ## Some pathways might be empty so remove them
+  vec <- lengths(gset.subset)!=0
+  
+  gset.subset <- gset.subset[vec]
+  kegg_descriptions <- gsets$descriptions[vec]
+  res <- list(gene_sets=gset.subset,descriptions=kegg_descriptions)
+  return(res)
+}
+```
+
+Making pathfindR ready r objects
+```{r}
+# there was space before gene symbol
+KD.vs.Control$GeneSymbol <- gsub(" ","",KD.vs.Control$GeneSymbol)
+universe <- KD.vs.Control$GeneSymbol
+mmu_gsets <- retainExpressedOnly(gsets_list, universe)
+
+runPFR <- function(data, name){
+run_pathfindR(input = data,
+              convert2alias = FALSE,
+              gene_sets = "Custom",
+              custom_genes = mmu_gsets$gene_sets,
+              custom_descriptions = mmu_gsets$descriptions,
+              max_gset_size = Inf,min_gset_size=3,iterations = 100,
+              pin_name_path = path2SIF, output_dir=name)
+}
+
+a <- runPFR(subset(KD.vs.Control[,c(8,4,7)], abs(log2FoldChange)>1 & padj <0.05),"KPEDeltarasin.vs.KPE")
+
+RA_clustered <- cluster_enriched_terms(a)
+enrichment_chart(subset(RA_clustered, RA_clustered$Cluster %in% 1:6), plot_by_cluster = TRUE)
+saveRDS(RA_clustered,"pathfindR-KPEDeltastrain.vs.KPE.rds")
+write.csv(RA_clustered,"pathfindR.KPEDeltastrain.vs.KPE.csv")
+```
+
+
+# Session Information {-}
+
+```{r}
+sessionInfo()
+sink("ORAsessionInfo.txt")
+sessionInfo()
+sink()
+```
+
+
